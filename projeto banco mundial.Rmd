@@ -1,0 +1,1304 @@
+---
+title: "projeto doing business"
+author: "Diego dos Santos Fernandes"
+date: "04/07/2019"
+output:
+  pdf_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tinytex)
+library(tidyverse)
+library(tidyverse)
+library(ggrepel)
+library(readxl)
+library(stargazer)
+library(gghighlight)
+library(plotly)
+library(ggpubr)
+library(ggthemes)
+library(gridExtra)
+library(corrplot)
+library(GGally)
+library(devtools)
+
+library(hablar)
+#ibrary(patchwork)
+#
+# Antes de limpar o código eu filtrei as cidades duplicadas no excel por motivos de "sem tempo irmão"
+
+setwd("C:\\Users\\Samsung\\Desktop\\Trabalho\\diretorio\\Diretório_R")
+
+library(readxl)
+Historico_principal <- read_excel("C:/Users/Samsung/Desktop/Trabalho/INDICADORES DE COMPETICAO/INDICADORES DE COMPETICAO/BANCO MUNDIAL - DOING BUSINESS/DADOS/Dados Gerais/historico_modificado.xlsx")
+
+
+```
+
+
+
+# Preparando a base com a Pontuação Final
+
+
+```{r}
+
+Historico_principal$metodologia <- coalesce(Historico_principal$DB17_19,Historico_principal$DB16) 
+
+Historico_principal$metodologia2 <- coalesce(Historico_principal$metodologia,Historico_principal$DB15) 
+
+Historico_principal$pontuacao <- coalesce(Historico_principal$metodologia2,Historico_principal$B10_14)
+
+historico <- Historico_principal
+
+write.csv2(historico, "historico_modificado2.csv")
+
+#write.csv2(final, "historico_final_final.csv")
+
+```
+
+
+
+```{r}
+# Preparando a base com a pontuação final
+final <- historico[ , c(1:5,12)]
+
+final <- final %>% 
+      filter(!is.na(final$pontuacao))
+
+final2019 <-  final %>% 
+  filter( ano == 2019)
+# para fazer este gráfico, tive que utilizar um gambiarra. Para pontuar somente o brasil nos dados de 2019, coloquei no goem_text a referencia de outra base só de 2019 
+
+g1 <-  final %>%
+    filter( ano == 2019) %>% 
+   ggplot(aes (x = reorder(income_group,pontuacao) , y =  pontuacao, color = factor(income_group))) +
+  geom_boxplot()+
+   geom_point(data=final2019[final2019$pais == "Brasil",],size=3, color = "red")+
+   geom_text(aes(label = pais), data = filter(final2019,  pais == "Brasil"),  position = position_nudge(),color = "black", hjust=-0.3,vjust=0) +
+  geom_jitter(width = 0.1, alpha = 0.5)+
+    scale_y_continuous(breaks = seq (0,100,25),
+                       limits = c(0,100))+
+        labs(
+    title = "Pontuação Por Faixa de Renda - 2019",
+    x = "Faixa de Renda",
+    y = "Pontuação em facilidade em se fazer negócios
+          (EoDB)"
+  )+
+    theme(legend.position="none")
+   
+    
+g1
+
+
+
+
+```
+
+## América Latina
+
+```{r}
+#f <- ifelse(final$ano =="Brasil",'bold','black')
+
+# américa Latina
+final %>% 
+  filter(regiao == "Latin America & Caribbean" | pais == "Chile", ano == 2019) %>% 
+  ggplot(aes(x = pontuacao, y = reorder(pais, pontuacao)))+
+  geom_point()+
+  geom_vline(xintercept = 59.4, linetype = "dashed", color = "blue")+
+    geom_point(data=final2019[final2019$pais == "Brasil",],size=2, color = "red")+
+    theme(axis.text.y = element_text(color= "black" ))+
+ 
+ scale_x_continuous(breaks = seq (0,100,25)+,
+                       limits = c(0,100))+
+  labs(
+    title = "Facilidade em se Fazer Negócios América Latina - 2019",
+    x = "Pontuação",
+    y = ""
+     )
+  
+#OCDE
+
+final %>% 
+  filter(regiao == "High income: OECD" | pais == "Brasil", ano == 2019) %>% 
+  ggplot(aes(x = pontuacao, y = reorder(pais, pontuacao)))+
+  geom_point()+
+  geom_vline(xintercept = 77.8, linetype = "dashed", color = "blue")+
+    geom_point(data=final2019[final2019$pais == "Brasil",],size=3, color = "red")+
+  xlim(0, 100)+
+  theme(axis.text.y = element_text(color= "black" ))+
+ 
+ #scale_x_continuous(breaks = seq (0,100,25),
+                       #limits = c(0,100))+
+  labs(
+    title = "Facilidade em se Fazer Negócios OCDE - 2019",
+    x = "Pontuação",
+    y = ""
+     )
+
+
+
+ final %>% 
+   filter(ano == 2019) %>% 
+      group_by(regiao) %>% 
+     summarise(mean = mean(pontuacao), n = n())
+ 
+ 
+
+  
+
+
+
+```
+
+
+
+```{r}
+
+final2019 <-  final %>% 
+  filter( ano == 2019)
+
+
+#a <- ifelse(br, "red", "black")
+
+final %>% 
+  filter(regiao == "High income: OECD" | pais == "Brasil", ano == 2019) %>% 
+  ggplot(aes(x = pontuacao, y = reorder(pais, pontuacao)))+
+  geom_point()+
+  geom_vline(xintercept = 77.8, linetype = "dashed", color = "blue")+
+    geom_point(data=final2019[final2019$pais == "Brasil",],size=3, color = "red")+
+  theme(axis.text.y = element_text(color= "black" ))+
+  geom_segment(aes(x =0, xend= pontuacao, yend=pais),color="black")
+ 
+ #scale_x_continuous(breaks = seq (0,100,25),
+                       #limits = c(0,100))+
+  labs(
+    title = "Facilidade em se Fazer Negócios OCDE - 2019",
+    x = "Pontuação",
+    y = ""
+     )
+ 
+  # theme(axis.text.x = element_text(color= "black" ))+
+  #theme(axis.text.y = element_text(color() = "red"  ))+
+
+```
+
+
+```{r}
+
+
+```
+
+
+## Renda população e score
+
+
+```{r eval=FALSE, include=FALSE}
+
+library(readxl)
+Economy_characteristics <- read_excel("C:/Users/diego.fernandes/Desktop/CADE TRABALHO/ATUAIS/INDICADORES DE COMPETICAO/BANCO MUNDIAL - DOING BUSINESS/DADOS/Dados Gerais/Economy_characteristics.xlsx")
+
+
+#Economy_characteristics$GNI <- retype(Economy_characteristics$GNI)
+
+#class(Economy_characteristics$GNI)
+
+
+#Economy_characteristics$Population <- as.numeric(gsub(",", ".", Economy_characteristics$Population ))
+#Economy_characteristics$GNI <- as.numeric(gsub(",", ".", Economy_characteristics$GNI ))
+#Economy_characteristics$GNI <-as.numeric(as.character(Economy_characteristics$GNI))
+
+Economy_characteristics$GNI  <- as.numeric(gsub(",", ".", as.character(Economy_characteristics$GNI)))
+
+
+
+final2 <-  final %>% 
+  filter(ano == 2017)
+
+percapita <- left_join(final2, Economy_characteristics, by = "pais")
+
+
+grafico_percapita <- percapita %>% 
+  ggplot(aes(x = GNI, y = pontuacao, color = income_group ))+
+  geom_point()
+
+grafico_percapita
+ 
+```
+
+
+
+```{r}
+# mudando de brasil para Brasil
+ 
+
+
+
+
+
+```
+
+
+## Preparação dos dados para OCDE e brics
+
+
+```{r}
+
+
+
+```
+
+
+
+
+## preparando os dados para só países
+
+```{r}
+
+
+```
+
+
+
+## preparando a base para cada um dos indicadores
+
+```{r}
+
+library(readxl)
+historico_indicadores_separados <- read_excel("C:/Users/Samsung/Desktop/Trabalho/INDICADORES DE COMPETICAO/INDICADORES DE COMPETICAO/BANCO MUNDIAL - DOING BUSINESS/DADOS/Dados por Indicador/historico_indicadores_separados.xlsx")
+View(historico_indicadores_separados)
+
+# dealing with contrution permits
+
+historico_indicadores_separados$constrution <- coalesce(historico_indicadores_separados$`score_dealing_with construction_permits_DB16_19`,  historico_indicadores_separados$`score_dealing with construction permits_DB06_15`) 
+
+#getting eletricit
+
+historico_indicadores_separados$eletric <- coalesce(historico_indicadores_separados$`score_getting electricity_DB16_19` , historico_indicadores_separados$`score_getting_ electricity_DB10_15`)
+
+# registering property
+
+historico_indicadores_separados$RPb <- coalesce(historico_indicadores_separados$score_registering_property_DB17_19, historico_indicadores_separados$score_registering_property_DB16)
+ 
+historico_indicadores_separados$RP <- coalesce(historico_indicadores_separados$RPb, historico_indicadores_separados$`score_registering property_DB05-15`)
+
+
+
+# getting credit
+
+historico_indicadores_separados$credit <-   coalesce( historico_indicadores_separados$score_getting_credit_DB15_19, historico_indicadores_separados$`score_getting credit_DB05_14`)
+
+# protecting minority investors
+ 
+historico_indicadores_separados$protec_inves <- coalesce(  historico_indicadores_separados$`score_protecting_minority_ investors_DB15_19`, historico_indicadores_separados$score_protecting_minority_investors_DB06_14)
+
+# Paying taxes
+
+historico_indicadores_separados$paying_taxes <- coalesce(historico_indicadores_separados$`score_paying_taxes_ (DB17-19 methodology)`, historico_indicadores_separados$`Score_Paying taxes_DB06_16`) 
+
+# trading across borders
+
+historico_indicadores_separados$borders <- coalesce(historico_indicadores_separados$`score_trading_across_borders_DB16-19`, historico_indicadores_separados$`score_trading_across borders_DB06_15`)
+
+
+# enforcing contrats
+
+historico_indicadores_separados$contra <- coalesce(historico_indicadores_separados$score_enforcing_contracts_DB17_19,historico_indicadores_separados$score_enforcing_contracts_DB16) 
+
+
+historico_indicadores_separados$contract <- coalesce(historico_indicadores_separados$contra, historico_indicadores_separados$`score_enforcing_contracts_DB04-15`)
+
+# resolve insolvency
+
+historico_indicadores_separados$insolvency <- coalesce(historico_indicadores_separados$`score_resolving_insolvency_DB15-19`, historico_indicadores_separados$score_resolving_insolvency_DB04_14)
+
+
+indicadores <- historico_indicadores_separados %>% 
+  select(codigo, pais, regiao, income_group, ano, score_starting_a_business,constrution,eletric,RP,credit,protec_inves,paying_taxes,borders, contract,insolvency)
+
+indicadores2 <- indicadores %>% 
+  gather(6:15, key = "Indicador",  value = "pontuacao")
+
+indicadores2 <- indicadores2 %>% 
+  filter(!is.na(indicadores2$pontuacao))
+
+
+
+```
+
+## Gráfico Dos indicadores Intermediários
+
+
+### Abetura de empresas
+```{r}
+
+g_abertura <- indicadores2 %>%
+  filter(Indicador == "score_starting_a_business", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2004:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Abertura de Empresas",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_abertura
+
+```
+
+### Obtenção de alvarás de construção
+
+```{r}
+#Obtenção de Alvará de Construção
+
+g_construcao <- indicadores2 %>%
+  filter(Indicador == "constrution", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2006:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Obtenção de Alvará de Construção",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_construcao
+```
+
+
+### Obtenção de Eletricidade
+
+
+```{r}
+
+# Obtenção e eletricidade
+
+g_eletricidade <- indicadores2 %>%
+  filter(Indicador == "eletric", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2010:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Obtenção de Eletricidade",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_eletricidade
+
+```
+
+
+### Registro de propriedades
+
+
+
+```{r}
+
+g_registro <- indicadores2 %>%
+  filter(Indicador == "RP", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2005:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Registro de Propriedades",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_registro
+
+```
+
+
+### Obtenção de crédito
+
+```{r}
+# Obtenção de Crétido
+
+g_credito <- indicadores2 %>%
+  filter(Indicador == "credit", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2005:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Obtenção de Crédito",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+
+g_credito
+
+```
+
+
+### Proteção dos investidores minoritários
+
+```{r}
+
+g_protecao <- indicadores2 %>%
+  filter(Indicador == "protec_inves", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2006:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Proteção dos investidores minoritários",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_protecao
+
+
+```
+
+
+###	Pagamento de impostos
+
+
+```{r}
+
+g_paying_taxes <- indicadores2 %>%
+  filter(Indicador == "paying_taxes", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2006:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Pagamento de Impostos",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+
+g_paying_taxes
+
+```
+
+### Comércio entre fronteiras
+
+
+
+```{r}
+g_borders <- 
+  g_paying_taxes <- indicadores2 %>%
+  filter(Indicador == "borders", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2006:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Comércio entre Fronteiras",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+
+g_borders
+
+```
+
+
+
+### Execução de Contratos
+
+```{r}
+
+
+g_contract <- indicadores2 %>%
+  filter(Indicador == "contract", pais == "Brasil") %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2004:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Execução de Contratos",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_contract
+
+```
+
+### Resolução de insolvência
+
+```{r}
+g_insolvencia <- indicadores2 %>%
+  filter(Indicador == "insolvency", pais == "Brasil", ano %in% c(2010:2019)) %>%
+  ggplot(aes(x = ano, y = pontuacao, fill = pais))+
+  geom_bar(stat="identity", position=position_dodge(), fill= "steelblue") +
+  scale_y_continuous(limits = c(0,100))+
+   scale_x_continuous(breaks = c(2004:2019))+
+  geom_text(aes(label= pontuacao), position = "dodge",hjust=0.5,vjust= -0.5, size = 4.5, color = "black")+
+   labs(
+    title = "Resolução de Insolvência",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019. \nFonte: Banco Mundial\nElaboração:CADE/DEE"
+    ) +
+  theme(legend.position="none",plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+g_insolvencia
+
+```
+
+
+
+
+
+
+## Indicador global OCDE
+
+```{r}
+### fazendo das linhas um grupo de dados https://stackoverflow.com/questions/47619504/summarize-data-with-condition-and-create-new-row-dplyr 
+
+OCDE_brasil <- final %>% 
+  filter(regiao == "High income: OECD" | pais == "Brasil") %>% 
+       mutate(Grupo = ifelse(regiao == "High income: OECD", 'OCDE', pais)) %>% 
+       group_by(Grupo, ano) %>% 
+       summarise(pontuacao = round(mean(pontuacao), digits = 2))
+  
+G_OCDE <- OCDE_brasil %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+     scale_y_continuous(limits = c(0,100))+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2 )+
+  scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+  labs(
+    title = "Facilidade em se Fazer negócios - OCDE",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019."
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=8, hjust=0, vjust = 3))
+
+
+
+
+  # +
+ # labs(
+  #  title = "Pontuação Facilidade de se fazer negécios",
+  #  x = "Ano",
+  #  y = "Pontuação",
+#caption = "Pontuação baseada nas médias dos países que compõem os blocos"
+  #  ) +
+  #theme(plot.caption = element_text(size=10, hjust=0, vjust = 0))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Indicadores Brics
+
+```{r eval=FALSE, include=FALSE}
+indicadores2 %>% 
+  filter(pais %in% c ("Brasil", "India", "China", "Russian Federation", "South Africa"), Indicador == "score_starting_a_business", ano >= 2010) %>% 
+       ggplot(aes(x = pais , y = pontuacao, fill = pais))+
+    geom_bar(stat="identity", position=position_dodge())+
+   geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2 )+
+  theme()+
+
+     scale_y_continuous(limits = c(0,100))+
+    scale_x_discrete(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+  labs(
+    title = "Abertura de empresas BRICS",
+    x = "Ano",
+    y = "Pontuação Abertura de Empresas",
+    caption = "O gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019."
+    ) +
+  theme(legend.position= "bottom",plot.caption=element_text(size=10, hjust=0))+
+  scale_fill_brewer(palette = "Dark2",
+                        name="Países",
+                         breaks=c("Brasil", "China", "India", "Russian Federation", "South Africa"),
+                         labels=c("Brasil", "China", "Índia", "Rússia", "África do Sul"))+
+  facet_wrap(.~ano)
+  
+
+
+cor <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442")
+```
+
+
+```{r}
+
+# Gráfico BRiCs abertura de empresas
+
+
+   
+#outra tentativa
+
+Brics_brasil <- final %>% 
+  filter(pais %in% c ("Brasil", "India", "China", "Russian Federation", "South Africa")) %>% 
+       mutate(Grupo = ifelse(pais %in% c ("Brasil", "India", "China", "Russian Federation", "South Africa"), 'BRICS', pais)) %>% 
+       group_by(Grupo, ano) %>% 
+       summarise(pontuacao = round(mean(pontuacao), digits = 2))
+
+Brics_brasil
+
+vetor_brasil <- final %>% 
+  select(pais,ano, pontuacao) %>% 
+  filter(pais == "Brasil") %>% 
+  group_by(ano)
+vetor_brasil <- vetor_brasil %>% 
+  rename(Grupo = pais)
+
+BRICS <- full_join(vetor_brasil,Brics_brasil, by = c("Grupo", "ano", "pontuacao"))
+
+
+
+G_brics <- BRICS %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+  labs(
+    title = "Facilidade em se Fazer negócios - BRICS",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019."
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=8, hjust=0, vjust = 3))
+
+
+grid.arrange(G_brics, G_OCDE, ncol = 2)
+
+##OCDE BRICS FULLJOIN
+BRICS_OCDE <- full_join(BRICS, OCDE_brasil, by = c("Grupo", "ano", "pontuacao"))
+
+G_BRICS_OCDE <- BRICS_OCDE %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("#CC6666", "#9999CC", "#66CC99"))+
+  labs(
+    title = "Facilidade em se Fazer negócios - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=8, hjust=0, vjust = 3))
+
+G_BRICS_OCDE
+
+```
+
+
+## SubIndicadores Intermediários OCDE/Brics
+
+### Join das bases e teste
+```{r}
+
+Sub_Brics_brasil <- indicadores2 %>% 
+  filter(pais %in% c ("Brasil", "India", "China", "Russian Federation", "South Africa")) %>% 
+       mutate(Grupo = ifelse(pais %in% c ("Brasil", "India", "China", "Russian Federation", "South Africa"), 'BRICS', pais)) %>% 
+       group_by(Grupo, ano, Indicador) %>% 
+       summarise(pontuacao = round(mean(pontuacao), digits = 2))
+
+Sub_vetor_brasil <- indicadores2 %>% 
+  select(pais,ano, pontuacao, Indicador) %>% 
+  filter(pais == "Brasil") %>% 
+  group_by(ano)
+Sub_vetor_brasil <- Sub_vetor_brasil %>% 
+  rename(Grupo = pais)
+
+Sub_BRICS <- full_join(Sub_vetor_brasil,Sub_Brics_brasil, by = c("Grupo", "ano", "pontuacao", "Indicador"))
+
+g_sub_brics <- Sub_BRICS %>%
+  filter(Indicador == "score_starting_a_business") %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+  labs(
+    title = "Facilidade em se Fazer negócios - BRICS",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:\nDB2004-2014, DB2015, DB2016, DB2017-2019."
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=8, hjust=0, vjust = 3))
+
+g_sub_brics
+  
+###Fazendo pra OCDE e juntando OCDE e Brics
+
+Sub_OCDE_brasil <- indicadores2 %>% 
+  filter(regiao == "High income: OECD" | pais == "Brasil") %>% 
+       mutate(Grupo = ifelse(regiao == "High income: OECD", 'OCDE', pais)) %>% 
+       group_by(Grupo, ano, Indicador) %>% 
+       summarise(pontuacao = round(mean(pontuacao), digits = 2))
+
+
+Sub_BRICS_OCDE <- full_join(Sub_BRICS, Sub_OCDE_brasil, by = c("Grupo", "ano", "pontuacao", "Indicador"))
+
+### Gráfico de teste
+
+
+
+
+```
+
+
+
+```{r eval=FALSE, include=FALSE}
+uniq_ind = unique(Sub_BRICS_OCDE$Indicador)
+
+
+# Loop
+
+for (i in uniq_ind) {
+
+  temp_plot <-  Sub_BRICS_OCDE %>% 
+ filter(ano %in% c(2010:2019)) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2) +
+                  ggtitle(i)
+
+  ggsave(temp_plot, file=paste0("plot_", i,".jpeg"), width = 30, height = 20, units = "cm")
+}
+
+
+
+
+for (i in uniq_ind) {
+  mydata_id <- subset(Sub_BRICS_OCDE, Indicador == i) # subselect group
+  p <- ggplot(mydata_id, aes(x = ano, y = round(pontuacao), fill = Grupo)) + 
+    geom_bar( stat = "identity",  position=position_dodge())+
+    geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2, size = 4)
+    
+  
+  # create graph
+  png(paste("plot_", i, ".png", sep = ""), width=2100, height=689, res=100) # start export
+  print(p) 
+  dev.off() # finish export
+}
+
+
+
+```
+
+
+# Gráfico de todos os Subindicadores
+
+### Abertura de Empresas
+
+```{r}
+
+sub_ocdebrics_starting <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "score_starting_a_business", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Abertura de Empresa - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_starting
+
+```
+
+
+###Obtenção de Alvara de Construção
+
+```{r}
+
+sub_ocdebrics_constru <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "constrution", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Obtenção de Alvará de Construção - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_constru
+
+
+
+```
+
+### Obtendo eletricidade
+
+
+
+
+```{r}
+
+sub_ocdebrics_eletric <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "eletric", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Obtendo Eletricidade - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_eletric
+
+
+
+```
+
+
+###Registro de propriedades
+
+```{r}
+
+
+
+
+sub_ocdebrics_RP <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "RP", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Registro de propriedades - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_RP
+
+```
+
+
+### Obtenção de crédito
+
+
+```{r}
+
+
+
+sub_ocdebrics_credit <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "credit", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Obtenção de crédito - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_credit
+
+```
+
+###Proteção dos investidores minoritários
+
+```{r}
+
+	sub_ocdebrics_protec_inves <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "protec_inves", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Proteção dos investidores minoritários - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_protec_inves
+
+
+
+```
+
+### 	Pagamento de impostos
+
+
+```{r}
+
+		sub_ocdebrics_paying_taxes <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "paying_taxes", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Pagamento de impostos - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_paying_taxes
+
+	
+	
+```
+
+
+### Comércio entre fronteiras
+
+
+```{r}
+
+
+sub_ocdebrics_borders <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "borders", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Comércio entre fronteiras - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_borders
+
+
+
+```
+
+
+
+###Execução de contratos
+
+```{r}
+
+sub_ocdebrics_contract <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "contract", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Comércio entre fronteiras - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_contract
+
+
+```
+
+
+###	Resolução de Insolvência
+
+```{r}
+
+
+
+sub_ocdebrics_insolvency <- Sub_BRICS_OCDE %>%
+  filter(Indicador == "insolvency", ano %in% c(2010:2019) ) %>% 
+  ggplot(aes(x = ano, y = round(pontuacao), fill = Grupo))+
+   geom_bar(stat="identity", position=position_dodge())+
+geom_text(aes(label= pontuacao), position = position_dodge(1), vjust = -0.2)+
+      scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+     scale_y_continuous(limits = c(0,100))+
+   scale_fill_manual(values=c("steelblue", "#66CC99", "#FF6666"))+
+  labs(
+    title = "Resolução de Insolvência - OCDE/BRICS/Brasil",
+    x = "Ano",
+    y = "Pontuação",
+    caption = "O Gráfico apresenta um histórico de pontuação baseado nas modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",
+        plot.caption=element_text(size=10, hjust=0, vjust = 3))
+
+sub_ocdebrics_insolvency
+
+#ggsave(file="sub_ocdebrics_insolvency.png", width = 15, height = 8, dpi = 150, units = "in", device='png')
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Posição no Ranking
+
+##Ranking 2019
+
+```{r}
+
+library(readxl)
+Rankings <- read_excel("C:/Users/Samsung/Desktop/Trabalho/INDICADORES DE COMPETICAO/INDICADORES DE COMPETICAO/BANCO MUNDIAL - DOING BUSINESS/DADOS/Dados Gerais/Rankings.xlsx")
+View(Rankings)
+
+Rankings <- Rankings %>% 
+  gather(2:12, key = "Indicador",  value = "posicao")
+
+
+Rankings %>% 
+  filter(Economy == "Brasil", Indicador != "Facilidade em se Fazer Negócios") %>% 
+    ggplot(aes(x= reorder(Indicador,posicao) , y = posicao))+
+geom_bar(stat="identity", position=position_dodge(),  fill="#FF9999")+
+ geom_text(aes(label= posicao), position = position_dodge(1), vjust = -0.2, hjust = 0)+
+ theme_base()+
+labs( title = "Posição do Brasil por Indicador - 2019",
+  x = "",
+  y = "Posição no Ranking",
+  caption = "Fonte:Banco Mundial\nElaboração: CADE/DEE"
+)+
+theme(legend.position="none",plot.caption=element_text(size=8, hjust= -0.5, vjust = 3))+
+  ggpubr::rotate_x_text()+
+  coord_flip()
+
+#Ranking BRICS
+
+Rankings %>% 
+  filter(Economy %in% c ("Brasil", "China", "Russian Federation", "South Africa", "India"),
+          Indicador == "Facilidade em se Fazer Negócios") %>% 
+    ggplot(aes(x= Economy , y = posicao))+
+geom_bar(stat="identity", position=position_dodge(), aes(fill = Economy=="Brasil" ) )+
+ geom_text(aes(label= posicao), position = position_dodge(1), vjust = -0.2, hjust = 0)+
+scale_fill_manual(values = c("#666666", '#CC0000') )+
+  labs( title = "Posição Facilidade em se Fazer Negócios - 2019",
+  x = "",
+  y = "Posição no Ranking",
+  caption = "Fonte:Banco Mundial\nElaboração: CADE/DEE"
+)+
+theme(legend.position="none",plot.caption=element_text(size=10, hjust= 0, vjust = 3))
+ 
+#países da OCDE
+
+
+Rankings %>% 
+  filter(Economy %in% c ("Brasil", "Belgium","Canada",	"Chile",	"Czech Republic",	"Denmark",	"Estonia",	"Finland",	"France",	"Germany",	"Greece",	"Hungary",	"Iceland",	"Ireland	Israel",	"Italy",	"Japan",	"Korea, Rep.",	"Latvia",	"Lithuania",	"Luxembourg",	"Netherlands",	"New Zealand",	"Norway",	"Poland",	"Portugal",	"Slovak", "Republic	Slovenia",	"Spain",	"Sweden",	"Switzerland",	"United Kingdom",	"United States"),
+          Indicador == "Facilidade em se Fazer Negócios") %>% 
+    ggplot(aes(x= reorder(Economy,desc(posicao)) , y = posicao))+
+geom_bar(stat="identity", position=position_dodge(), aes(fill = Economy=="Brasil" ) )+
+ geom_text(aes(label= posicao), position = position_dodge(1), vjust = 0.3, hjust = -0.4)+
+scale_fill_manual(values = c("#666666", '#CC0000') )+
+  labs( title = "Posição Facilidade em se Fazer Negócios - 2019",
+  x = "",
+  y = "Posição no Ranking",
+  caption = "Fonte:Banco Mundial\nElaboração: CADE/DEE"
+)+
+theme(legend.position="none",plot.caption=element_text(size=10, hjust= -0.1, vjust = 3))+
+  ggpubr::rotate_x_text()+
+  coord_flip()
+
+```
+
+
+## tranformação rankings ao longo dos anos
+
+```{r}
+
+ranking_br <- final %>% 
+    group_by( ano) %>% 
+mutate(rank = rank(desc(pontuacao)))
+
+#Gráfico com a posição do rankings atualizadas pela metodologia
+
+ranking_br %>% 
+  filter(pais == "Brasil") %>% 
+  ggplot(aes(x = ano, y = rank))+
+   geom_bar(stat="identity", position=position_dodge(), fill = "#9999CC")+
+geom_text(aes(label= rank), position = position_dodge(1), vjust = 0.2, hjust = 0)+
+  scale_x_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+      
+  labs(
+    title = "Posição do Ranking no Brasil por Ano",
+    x = "Ano",
+    y = "Posição no Ranking",
+    caption = "O Gráfico apresenta um histórico do ranking brasileiro lenado em consideração as modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=8, hjust=0, vjust = 3))+
+     coord_flip()
+ 
+
+
+ranking_br %>% 
+  filter(pais == "Brasil") %>% 
+  ggplot(aes(x = rank, y = ano, label = rank))+
+geom_point(stat='identity', fill="black", size=10)  +
+  scale_y_continuous(breaks = c(2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+  geom_segment(aes(y = ano, 
+                   x = 0, 
+                  yend = ano, 
+                  xend = rank), 
+               color = "black") +
+  geom_text(color="white", size=4, fontface = "bold")+
+  labs(
+    title = "Posição do Ranking no Brasil por Ano",
+    subtitle = "Considerando-se as atualizações metodológicas",
+    x = "Ano",
+    y = "Posição no Ranking",
+    caption = "O Gráfico apresenta um histórico do ranking brasileiro lenado em consideração as modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=9, hjust=0, vjust = 3))
+  
+  
+
+```
+
+
+#ranking por subIndicador
+```{r}
+
+Sub_ranking_br <- indicadores2 %>% 
+      group_by(ano, Indicador) %>% 
+mutate(rank = rank(desc(pontuacao)))
+
+
+g1_sub_ranking_br <-  Sub_ranking_br %>% 
+  filter(pais == "Brasil", Indicador == "score_starting_a_business") %>% 
+  ggplot(aes(x = rank, y = ano, label = rank))+
+geom_point(stat='identity', fill="black", size=10)  +
+  scale_y_continuous(breaks = c(2004:2010,2011,2012,2013,2014,2015,2016,2017,2018,2019))+
+  geom_segment(aes(y = ano, 
+                   x = 0, 
+                  yend = ano, 
+                  xend = rank), 
+               color = "black") +
+  geom_text(color="white", size=4, fontface = "bold")+
+  
+  geom_text(color="white", size=4, fontface = "bold")+
+  labs(
+    title = "Posição do Ranking no Brasil - Abertura de Empresas",
+    subtitle = "Considerando-se as atualizações metodológicas",
+    x = "Ano",
+    y = "Posição no Ranking",
+    caption = "O Gráfico apresenta um histórico do ranking brasileiro levando em consideração as modificões metodológicas dos seguintes anos:DB2004-2014, DB2015, DB2016, DB2017-2019.\nFonte:Banco Mundial\nElaboração: CADE/DEE"
+    ) +
+  theme(legend.position="bottom",plot.caption=element_text(size=9, hjust=0, vjust = 3))+
+  coord_flip() 
+
+g1_sub_ranking_br
+
+```
+
