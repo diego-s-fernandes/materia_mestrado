@@ -1,0 +1,707 @@
+---
+title: "Estatistica"
+author: "Diego dos Santos Fernandes e Humberto Nunes Alencar"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tidyverse)
+library(PerformanceAnalytics)
+library(quantmod)
+library(timeSeries)
+library(xts)
+library(qcc)
+library(gridExtra)
+library(RiskPortfolios)
+library(tidyquant)
+library(fTrading)
+library(corrplot)
+library(GGally)
+library(moments)
+library(e1071)
+library(psych)
+
+```
+
+# Observações
+
+Primeiro serão resolvidas as questões do livro de finanças do professor e posteriormente as questões sobre a base de dados apresentados em sala
+
+#Questão 2.2 
+##intem (1) - importação dos dados e cálculo do EWMA e MA
+A importação dos dados e os gráficos estão nos códigos em seguida
+
+
+```{r Importanto os dados, warning=FALSE}
+
+#importando os dados
+
+petro <-  getSymbols("PETR4.SA", src = "yahoo", from = "2014-01-01", to = "2018-12-31", auto.assign = FALSE)
+oi <-  getSymbols("OIBR3.SA", src = "yahoo", from = "2014-01-01", to = "2018-12-31", auto.assign = FALSE)
+vale <-  getSymbols("VALE3.SA", src = "yahoo", from = "2014-01-01", to = "2018-12-31", auto.assign = FALSE)
+cielo <-  getSymbols("CIEL3.SA", src = "yahoo", from = "2016-01-01", to = "2019-12-31", auto.assign = FALSE)
+b3 <-  getSymbols("B3SA3.SA", src = "yahoo", from = "2014-01-01", to = "2018-12-31", auto.assign = FALSE)
+ibovespa <-  getSymbols("^BVSP", src = "yahoo", from = "2014-01-01", to = "2018-12-31", auto.assign = FALSE)
+
+ibovespa2 <-  getSymbols("^BVSP", src = "yahoo", from = "2014-01-01", to = "2018-12-31", auto.assign = FALSE)
+# retirando as NAs da Base do Ibovespa
+ibovespa <- ibovespa[complete.cases(ibovespa),]
+
+
+
+
+```
+
+
+
+
+
+```{r Série de preços}
+
+
+preco_petro<- petro %>% 
+ggplot (aes(x = index(petro), y = petro[,6]))+
+  geom_line(color = "blue") +
+  labs(
+    title = "Série Histórica Petrobrás",
+    x = "Data",
+    y = " Preço"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+preco_petro 
+
+preco_oi <- oi %>% 
+ggplot (aes(x = index(oi), y = oi[,6]))+
+  geom_line(color = "#CC6666") +
+  labs(
+    title = "Série Histórica Oi",
+    x = "Data",
+    y = " Preço"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+preco_oi
+
+preco_vale <- vale %>% 
+ggplot (aes(x = index(vale), y = vale[,6]))+
+  geom_line(color = "#9999CC") +
+  labs(
+    title = "Série Histórica Vale",
+    x = "Data",
+    y = " Preço"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+
+preco_vale
+
+
+preco_cielo <- cielo %>% 
+ggplot (aes(x = index(cielo), y = cielo[,6]))+
+  geom_line(color = "#66CC99") +
+  labs(
+    title = "Série Histórica Cielo",
+    x = "Data",
+    y = " Preço"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+preco_cielo
+
+
+preco_b3 <- b3 %>% 
+ggplot (aes(x = index(b3), y = b3[,6]))+
+  geom_line(color = "darkgreen") +
+  labs(
+    title = "Série Histórica B3",
+    x = "Data",
+    y = " Preço"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+preco_b3
+
+
+
+
+cot_ibovespa <- ibovespa %>% 
+ggplot (aes(x = index(ibovespa), y = ibovespa[,6]))+
+  geom_line(color = "skyblue4") +
+  labs(
+    title = "Série Histórica Ibovespa",
+    x = "Data",
+    y = " Cotação"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "8 months")+
+  theme_tq() + 
+    scale_color_tq()
+cot_ibovespa
+
+grid.arrange(preco_petro,preco_b3,preco_cielo,preco_oi,preco_vale, cot_ibovespa ,ncol=2, nrow = 3)
+
+
+
+```
+
+Cálculo do Retorno
+
+$$ r_{t} = ln(1+R_t) = ln\bigg(\frac{P_t}{P_{t-1}}\bigg) = ln(P_{t})-ln(P_{t-1}) \approx R_{t}$$
+
+
+```{r Séries de Retorno}
+# retorno 
+
+
+petro_ret <- diff(log(petro[,6]))
+petro_ret <- petro_ret[-1,]
+
+
+oi_ret <- diff(log(oi[,6]))
+oi_ret <- oi_ret[-1,]
+
+vale_ret <- diff(log(vale[,6]))
+vale_ret <- vale_ret[-1,]
+
+cielo_ret <- diff(log(cielo[,6]))
+cielo_ret <- cielo_ret[-1,]
+
+b3_ret <- diff(log(b3[,6]))
+b3_ret <- b3_ret[-1,]
+
+ibovespa_ret <- diff(log(ibovespa[,6]))
+ibovespa_ret <-ibovespa_ret[-1,]
+
+
+
+
+
+
+
+
+graf_ret_petro <- ggplot(petro_ret, aes(x = index(petro_ret), y = petro_ret)) + geom_line(color = "skyblue4") +
+ggtitle("Série de retornos da Petrobras") + xlab("Data") + ylab("Retorno") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_ret_petro 
+
+
+graf_ret_oi <- ggplot(oi_ret, aes(x = index(oi_ret), y = oi_ret)) + geom_line(color = "#CC6666") +
+ggtitle("Série de retornos da Oi") + xlab("Data") + ylab("Retorno") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_ret_oi
+
+graf_ret_vale <- ggplot(vale_ret, aes(x = index(vale_ret), y = vale_ret)) + geom_line(color = "#9999CC") +
+ggtitle("Série de retornos da Vale") + xlab("Data") + ylab("Retorno") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_ret_vale
+
+graf_ret_cielo <- ggplot(cielo_ret, aes(x = index(cielo_ret), y = cielo_ret)) + geom_line(color = "#66CC99") +
+ggtitle("Série de retornos da Cielo") + xlab("Data") + ylab("Retorno") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_ret_cielo
+
+
+graf_ret_b3 <- ggplot(b3_ret, aes(x = index(b3_ret), y = b3_ret)) + geom_line(color = "darkgreen") +
+ggtitle("Série de retornos da B3") + xlab("Data") + ylab("Retorno") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+
+graf_ret_b3 
+
+
+graf_ibovespa <- ggplot(ibovespa_ret, aes(x = index(ibovespa_ret), y = ibovespa_ret)) + geom_line(color = "red4") +
+ggtitle("Série de retornos Ibovespa") + xlab("Data") + ylab("Retorno") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_ibovespa
+
+
+grid.arrange(graf_ret_b3, graf_ret_cielo, graf_ret_oi, graf_ret_petro, graf_ret_vale, graf_ibovespa, ncol=2, nrow = 3)
+
+
+```
+
+
+```{r Volatilidade}
+vol.petro <- volatility(petro[ ,6])# como estava dando erro, eu troquei a base de dados de petr2 por petro2 <- petro[ ,6]
+
+vol.oi <- volatility(oi[ ,6]) 
+vol.vale <- volatility(vale[ ,6]) 
+vol.cielo <- volatility(cielo[ ,6]) 
+vol.b3 <- volatility(b3[ ,6]) 
+vol.ibovespa <- volatility(ibovespa[ ,6])
+
+
+
+
+
+
+
+
+graf_vol_petro <- ggplot(vol.petro, aes(x = index(vol.petro), y = vol.petro))+ geom_line(color = "#9999CC") +
+ggtitle("volatilidade da Petrobras") + xlab("Data") + ylab("Volatilidade") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_vol_petro
+
+graf_vol_vale <- ggplot(vol.vale, aes(x = index(vol.vale), y = vol.vale)) + geom_line(color = "#CC6666") +
+ggtitle("volatilidade Vale") + xlab("Data") + ylab("Volatilidade") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_vol_vale
+
+
+graf_vol_oi <- ggplot(vol.oi, aes(x = index(vol.oi), y = vol.oi)) + geom_line(color = "#66CC99") +
+ggtitle("volatilidade Oi") + xlab("Data") + ylab("Volatilidade") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_vol_oi
+
+graf_vol_cielo <- ggplot(vol.cielo, aes(x = index(vol.cielo), y = vol.cielo)) + geom_line(color = "#CC6666") +
+ggtitle("volatilidade Cielo") + xlab("Data") + ylab("Volatilidade") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+
+graf_vol_cielo
+
+graf_vol_b3 <- ggplot(vol.b3, aes(x = index(vol.b3), y = vol.b3)) + geom_line(color = "darkgreen") +
+ggtitle("volatilidade B3") + xlab("Data") + ylab("Volatilidade") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_vol_b3
+
+graf_vol_ibovespa <- ggplot(vol.ibovespa, aes(x = index(vol.ibovespa), y = vol.ibovespa))+ geom_line(color = "#9999CC") +
+ggtitle("volatilidade da ibovespa") + xlab("Data") + ylab("Volatilidade") +
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months")
+
+graf_vol_ibovespa 
+
+
+grid.arrange(graf_vol_petro,graf_vol_vale, graf_vol_oi,graf_vol_cielo,graf_vol_b3,graf_vol_ibovespa , ncol=2, nrow = 3)
+
+```
+
+
+```{r}
+#criando as médias móveis
+
+
+#PETRO
+
+petro_mm <- subset(petro, index(petro) >= "2014-01-01")
+
+petro_mm22 <- rollmean(petro_mm[,6], 22, fill = list(NA, NULL, NA), align = "right")
+petro_mm126 <- rollmean(petro_mm[,6], 126, fill = list(NA, NULL, NA), align = "right")
+
+petro_mm$mm22 <- coredata(petro_mm22)
+petro_mm$mm126 <- coredata(petro_mm126)
+
+
+MA_petro <- ggplot(petro_mm, aes(x = index(petro_mm))) + geom_line(aes(y = petro_mm[,6], color = "Petro")) + 
+ggtitle("Série MA da Petrobras") +
+geom_line(aes(y = petro_mm$mm22, color = "MM22")) +
+geom_line(aes(y = petro_mm$mm126, color = "MM126")) +
+xlab("Data") + ylab("Preço ($)") +
+theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months") +
+scale_colour_manual("Séries", values=c("Petro"="gray40", "MM22"="firebrick4", "MM126"="darkcyan"))
+
+MA_petro
+
+#oi 
+
+oi_mm <- subset(oi, index(oi) >= "2014-01-01")
+
+oi_mm22 <- rollmean(oi_mm[,6], 22, fill = list(NA, NULL, NA), align = "right")
+oi_mm126 <- rollmean(oi_mm[,6], 126, fill = list(NA, NULL, NA), align = "right")
+
+oi_mm$mm22 <- coredata(oi_mm22)
+oi_mm$mm126 <- coredata(oi_mm126)
+
+
+MA_oi <- ggplot(oi_mm, aes(x = index(oi_mm))) + geom_line(aes(y = oi_mm[,6], color = "Petro")) + 
+ggtitle("Série MA da Oi") +
+geom_line(aes(y = oi_mm$mm22, color = "MM22")) +
+geom_line(aes(y = oi_mm$mm126, color = "MM126")) +
+xlab("Data") + ylab("Preço ($)") +
+theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months") +
+scale_colour_manual("Séries", values=c("Petro"="gray40", "MM22"="firebrick4", "MM126"="darkcyan"))
+
+
+MA_oi
+
+
+
+#vale  
+
+vale_mm <- subset(vale, index(vale) >= "2014-01-01")
+
+vale_mm22 <- rollmean(vale_mm[,6], 22, fill = list(NA, NULL, NA), align = "right")
+vale_mm126 <- rollmean(vale_mm[,6], 126, fill = list(NA, NULL, NA), align = "right")
+
+vale_mm$mm22 <- coredata(vale_mm22)
+vale_mm$mm126 <- coredata(vale_mm126)
+
+
+MA_vale <- ggplot(vale_mm, aes(x = index(vale_mm))) + geom_line(aes(y = vale_mm[,6], color = "Petro")) + 
+ggtitle("Série MA da Vale") +
+geom_line(aes(y = vale_mm$mm22, color = "MM22")) +
+geom_line(aes(y = vale_mm$mm126, color = "MM126")) +
+xlab("Data") + ylab("Preço ($)") +
+theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months") +
+scale_colour_manual("Séries", values=c("Petro"="gray40", "MM22"="firebrick4", "MM126"="darkcyan"))
+
+MA_vale
+
+#cielo
+
+
+cielo_mm <- subset(cielo, index(cielo) >= "2014-01-01")
+
+cielo_mm22 <- rollmean(cielo_mm[,6], 22, fill = list(NA, NULL, NA), align = "right")
+cielo_mm126 <- rollmean(cielo_mm[,6], 126, fill = list(NA, NULL, NA), align = "right")
+
+cielo_mm$mm22 <- coredata(cielo_mm22)
+cielo_mm$mm126 <- coredata(cielo_mm126)
+
+
+MA_cielo <- ggplot(cielo_mm, aes(x = index(cielo_mm))) + geom_line(aes(y = cielo_mm[,6], color = "Petro")) + 
+ggtitle("Série MA da Cielo") +
+geom_line(aes(y = cielo_mm$mm22, color = "MM22")) +
+geom_line(aes(y = cielo_mm$mm126, color = "MM126")) +
+xlab("Data") + ylab("Preço ($)") +
+theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months") +
+scale_colour_manual("Séries", values=c("Petro"="gray40", "MM22"="firebrick4", "MM126"="darkcyan"))
+
+MA_cielo
+
+#b3 
+
+b3_mm <- subset(b3, index(b3) >= "2014-01-01")
+
+b3_mm22 <- rollmean(b3_mm[,6], 22, fill = list(NA, NULL, NA), align = "right")
+b3_mm126 <- rollmean(b3_mm[,6], 126, fill = list(NA, NULL, NA), align = "right")
+
+b3_mm$mm22 <- coredata(b3_mm22)
+b3_mm$mm126 <- coredata(b3_mm126)
+
+
+MA_b3 <- ggplot(b3_mm, aes(x = index(b3_mm))) + geom_line(aes(y = b3_mm[,6], color = "Petro")) + 
+ggtitle("Série MA da B3") +
+geom_line(aes(y = b3_mm$mm22, color = "MM22")) +
+geom_line(aes(y = b3_mm$mm126, color = "MM126")) +
+xlab("Data") + ylab("Preço ($)") +
+theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months") +
+scale_colour_manual("Séries", values=c("Petro"="gray40", "MM22"="firebrick4", "MM126"="darkcyan"))
+
+#ibovespa
+
+ibovespa_mm <- subset(ibovespa, index(ibovespa) >= "2014-01-01")
+
+ibovespa_mm22 <- rollmean(ibovespa_mm[,6], 22, fill = list(NA, NULL, NA), align = "right")
+ibovespa_mm126 <- rollmean(ibovespa_mm[,6], 126, fill = list(NA, NULL, NA), align = "right")
+
+ibovespa_mm$mm22 <- coredata(ibovespa_mm22)
+ibovespa_mm$mm126 <- coredata(ibovespa_mm126)
+
+
+MA_ibovespa <- ggplot(ibovespa_mm, aes(x = index(ibovespa_mm))) + geom_line(aes(y = ibovespa_mm[,6], color = "Petro")) + 
+ggtitle("Série MA da Ibovespa") +
+geom_line(aes(y = ibovespa_mm$mm22, color = "MM22")) +
+geom_line(aes(y =ibovespa_mm$mm126, color = "MM126")) +
+xlab("Data") + ylab("Preço ($)") +
+theme(plot.title = element_text(hjust = 0.5), panel.border = element_blank()) +
+scale_x_date(date_labels = "%b %y", date_breaks = "8 months") +
+scale_colour_manual("Séries", values=c("Petro"="gray40", "MM22"="firebrick4", "MM126"="darkcyan"))
+
+
+MA_ibovespa
+
+```
+
+
+
+
+
+
+```{r EWMA}
+petro_ewma1 <- ewma(petro_ret, lambda=0.5, xlab = "Data", title = "EWMA - PETRO.SA LANBDA 0.5 ", type="xbar")
+petro_ewma2 <- ewma(petro_ret, lambda=0.9, xlab = "Data", title = "EWMA - PETRO.SA LANBDA 0.2", type="xbar")
+
+oi_ewma1 <- ewma(oi_ret, lambda=0.5, xlab = "Data", title = "EWMA - Oi LANBDA 0.5 ", type="xbar")
+oi_ewma2 <- ewma(oi_ret, lambda=0.9, xlab = "Data", title = "EWMA - Oi LANBDA 0.9", type="xbar")
+
+vale_ewma1 <- ewma(vale_ret, lambda=0.5, xlab = "Data", title = "EWMA - Vale LANBDA 0.5 ", type="xbar")
+vale_ewma2 <- ewma(vale_ret, lambda=0.9, xlab = "Data", title = "EWMA - Vale LANBDA 0.9", type="xbar")
+
+
+cielo_ewma1 <- ewma(cielo_ret, lambda=0.5, xlab = "Data", title = "EWMA - Cielo LANBDA 0.5 ", type="xbar")
+cielo_ewma2 <- ewma(cielo_ret, lambda=0.9, xlab = "Data", title = "EWMA - Cielo LANBDA 0.9", type="xbar")
+
+b3_ewma1 <- ewma(b3_ret, lambda=0.5, xlab = "Data", title = "EWMA - B3 LANBDA 0.5 ", type="xbar")
+b3_ewma2 <- ewma(b3_ret, lambda=0.9, xlab = "Data", title = "EWMA - B3 LANBDA 0.9", type="xbar")
+
+ibovespa_ewma1 <- ewma(ibovespa_ret, lambda=0.5, xlab = "Data", title = "EWMA - B3 LANBDA 0.5 ", type="xbar")
+ibovespa_ewma2 <- ewma(ibovespa_ret, lambda=0.9, xlab = "Data", title = "EWMA - B3 LANBDA 0.9", type="xbar")
+
+
+```
+
+
+
+## item (2) 
+
+ A volatilidade tende a suavizar quando K aumenta
+
+## item (3)
+
+O valor de $\lambda$ regula o grau de suavização na média móvel. Quanto mais próximo de zero o valor de $\lambda$ maior o peso da última observação, implicando em uma menor suavizaão da s?rie da m?dia estimada
+
+
+## intem (4) medidas de associação.
+
+a serie do IBOVESPA apresenta menor volatilidade devido ao fato de ser composto por uma cesta ponderada das ações, o que diminui o desvio padrão.Nesse sentido, o indice do IBOVESPA apresenta comportamento menos sensivel às turbulências do mercado financeiro
+
+```{r }
+
+
+## para calcular a vol do ibovespa cabou-se perdendo algumas linhas. Eu igualei o nnúmero de linhas para que o calculo da correlação podesse dar certo
+
+volatilidades <- data.frame(vol.oi[1:1237], vol.cielo[1:1237], vol.vale[1:1237], vol.b3[1:1237], vol.petro[1:1237], vol.ibovespa)
+
+
+cor(volatilidades,  method = "pearson")
+
+cor(volatilidades,  method = "kendall")
+
+cor(volatilidades,  method =  "spearman")
+
+
+pairs(volatilidades)
+
+corrplot(cor(volatilidades), method = "circle")
+ggpairs(volatilidades)
+
+
+
+```
+
+
+
+## item (5)
+ É possível ver, na maioria dos papeis, caso utilizassemos a distribuicao normal, estariamos subestimando a probabilidade de retornos negativos, pois a distribuicao e assimetrica a esquerda e, alem disso, possui caudas pesadas. Ou seja, há uma frequencia maior de valores nas caudas quando comparado com a distribuicao normal. Dessa forma, a distribuicao normal subestimaria a probabilidade de retornos negativos
+
+```{r curtose}
+
+
+# função que calcula a curtose
+#criei uma base chmada ibovespa dois para náo dar erro no número de linhas por causa do calculo da volatilidade
+
+#para o preço dos ativos
+todos_precos<- data.frame(oi[,6], cielo[,6], vale[,6], b3[,6], petro[,6], ibovespa2[,6])
+
+
+skew(todos_precos)
+
+kurtosi(todos_precos)
+#para as volatilidades
+
+
+skew(volatilidades)
+
+kurtosi(volatilidades)
+# para os retornos
+
+todos_retornos<- data.frame(petro_ret[1:1241], oi_ret[1:1241], vale_ret[1:1241], cielo_ret[1:1241], b3_ret[1:1241])
+
+
+skew(todos_retornos)
+
+kurtosi(todos_retornos)
+
+```
+
+```{r histogramas}
+
+# histogramas da volatilidade
+volatilidades %>%
+   gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+
+# hostogramas dos preços
+todos_precos %>%
+   gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+# histogramas para os retornos
+todos_retornos %>%
+   gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+
+```
+
+# Questão 2.3 
+
+
+O pacote PerformanceAnalytics possui funcao para calcular os momentos do EWMA. O terceiro momento (M3) e equivalente a assimetria e o quarto momemto (M4) a curtose.
+A matriz para cada um dos momentos pode ser obtido com os codigos abaixo (foi considerado lambda = 0.5).
+
+
+
+```{r}
+
+M3.ewma(R = petro_ret, lambda = 0.5)
+M3.ewma(R = oi_ret, lambda = 0.5)
+M3.ewma(R = vale_ret, lambda = 0.5)
+M3.ewma(R = cielo_ret, lambda = 0.5)
+M3.ewma(R = ibovespa_ret, lambda = 0.5)
+
+
+M4.ewma(R = petro_ret, lambda = 0.5)
+M4.ewma(R = oi_ret, lambda = 0.5)
+M4.ewma(R = vale_ret, lambda = 0.5)
+M4.ewma(R = cielo_ret, lambda = 0.5)
+M4.ewma(R = ibovespa_ret, lambda = 0.5)
+
+
+```
+
+
+
+
+#Exercícios dos slides - bade se dados IDH
+
+##Importando os dados
+
+
+```{r Importação dos dados}
+setwd("C:\\Users\\diego.fernandes\\Desktop\\CADE TRABALHO\\Especialização e mestrado\\mestrado IDP\\IDP_Introducao_a_Estatistica\\IDP_Introducao_a_Estatistica\\ProgramasR\\Dados_Municipios")
+
+#---- lendo as bases de dados em CSV
+
+dados <- read.csv2("IDH_Brasil_2010.csv", header=T, sep=";", dec=",", encoding="latin1");
+codigos_ufs <- read.csv2("codigos_ufs.csv", header=T, sep=";", dec=",", encoding="latin1");
+empresas <- read.csv2("CADASTRO_EMPRESAS_2008.csv", header=T, sep=";", dec=".", encoding="latin1")
+fiscal <- read.csv2("financas_publicas_2008.csv", header=T, sep=";", dec=".", encoding="latin1")
+obitos <- read.csv2("OBITOS_DATASUS.csv", header=T, sep=";", dec=".", encoding ="latin1")
+sanfrancisco <- read.csv2("CADASTRO_EMPRESAS_SAO_FRANCISCO_2008.csv", header=T, sep=";", dec=".", encoding ="latin1")
+```
+
+
+
+
+##Para os pares entre as variáveis acima, calcule as covariâncias e os coeficientes de correção
+
+IDHM_educacao
+IDHM_renda
+IDHM_logenvidade
+expec_anos_estudo
+
+```{r correlações e correlação}
+
+cov(dados$IDHM_educacao, dados$IDHM_renda, method="pearson")
+cor(dados$IDHM_educacao, dados$IDHM_renda, method="pearson")
+
+
+cov(dados$IDHM_educacao, dados$IDHM_logenvidade, method="pearson")
+cor(dados$IDHM_educacao, dados$IDHM_logenvidade, method="pearson")
+
+cov(dados$IDHM_educacao, dados$expec_anos_estudo, method="pearson")
+cor(dados$IDHM_educacao, dados$expec_anos_estudo, method="pearson")
+
+cov(dados$IDHM_renda, dados$expec_anos_estudo, method="pearson")
+cor(dados$IDHM_renda, dados$expec_anos_estudo, method="pearson")
+
+cov(dados$IDHM_renda, dados$IDHM_logenvidade, method="pearson")
+cor(dados$IDHM_renda, dados$IDHM_logenvidade, method="pearson")
+
+cov(dados$IDHM_logenvidade, dados$expec_anos_estudo, method="pearson")
+cor(dados$IDHM_logenvidade, dados$expec_anos_estudo, method="pearson")
+
+
+
+```
+
+
+## Faça um gráfico de dispersão entre o IDHM_educacao e o IDHM_renda
+
+
+```{r}
+
+ggplot(dados, aes( x = IDHM_educacao, y = IDHM_renda  )) +
+  geom_point(color = "darkblue") +
+  ggtitle("Dispersão IDHM_educacao e o IDHM_renda" )
+
+
+
+```
+
+```{r}
+dados_cor <- dados[,c("expec_anos_estudo", "IDHM_renda", "IDHM_logenvidade", "IDHM_educacao")]
+
+cov(dados_cor)
+
+cor(dados_cor)
+
+pairs(dados_cor)
+corrplot(cor(dados_cor), method = "circle")
+ggpairs(dados_cor)
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+

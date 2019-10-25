@@ -1,0 +1,206 @@
+---
+title: "Lista 3 estatística -  Regressão"
+author: "Diego dos Santos Fernandes e Humberto Nunes"
+date: "21 de junho de 2019"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+
+
+rm(list=ls()); #---- limpa todo o ambiente de variáveis para a execução do R
+
+#install.packages("plyr")
+#install.packages("caret") 
+#install.packages("leaps")
+#install.packages("ggplot2")
+
+library(tidyverse)
+library(caret)
+library(leaps)
+#library(car);
+
+#---- indique aqui o diretorio de trabalho
+
+setwd("C:\\Users\\diego.fernandes\\Desktop\\CADE TRABALHO\\Especialização e mestrado\\mestrado IDP\\IDP_Introducao_a_Estatistica\\IDP_Introducao_a_Estatistica\\ProgramasR\\Dados_Municipios");
+
+#---- lendo as bases de dados em CSV
+
+dados <- read.csv2("IDH_Brasil_2010.csv", header=T, sep=";", dec=",", encoding="latin1");
+codigos_ufs <- read.csv2("codigos_ufs.csv", header=T, sep=";", dec=",", encoding="latin1");
+empresas <- read.csv2("CADASTRO_EMPRESAS_2008.csv", header=T, sep=";", dec=".", encoding="latin1")
+fiscal <- read.csv2("financas_publicas_2008.csv", header=T, sep=";", dec=".", encoding="latin1")
+obitos <- read.csv2("OBITOS_DATASUS.csv", header=T, sep=";", dec=".", encoding ="latin1")
+
+#---- fazendo um join de colunas de duas tabelas
+
+fiscal1 <- fiscal[, !(colnames(fiscal) %in% c("nome_mun", "cod_uf", "uf"))]  #-- excluindo colunas
+
+dados1 <- merge(x = dados, y = codigos_ufs, by.x = "uf", by.y = "uf", all.x = T, all.y = T);
+dados2 <- merge(x = dados1, y = empresas, by.x = "codmun", by.y = "codmun", all.x = TRUE, all.y = TRUE)
+dados3 <- merge(x = dados2, y = fiscal1, by.x = "codmun", by.y = "cod_mun", all.x = TRUE)
+dados4 <- merge(x = dados3, y = obitos, by.x = "codmun", by.y = "codmun", all.x = TRUE)
+
+
+
+```
+
+# Exercício regressão questão 1 a 6
+
+obeservação: os códigos estão abaixo das respostas
+
+##Questão 1: No modelo anterior, quais as variáveis explicativas e qual a variável dependente?
+
+Essa regressão incial tenta revelar alguma relaçao entre mortalidade infantil e alguma caraterísticas socieconômicas.
+
+Neste caso a variável dependente é a mortalidade infantil e as variáveis explicativas são: renda per capita; índice de gini; salário médio mensal; percentual de crianças em extrema probreza, percentual de crianças pobres; ércentual de domicílio com agua e esgoto inadequados; percentual de domicílios com paredes inadequadas e por fim, o percentual de domicílios com coleta de lixo 
+
+
+##Questão 2: Os coeficientes encontrados estão com os sinais de acordo com o esperado?
+
+Apenas o índice de gini apresenta um sinal que não está de acordo com o modelo. Como o índice de gini varia de zero a um, sendo o valor zero representando a situação de igualdade, ou seja, todos têm a mesma renda e o  valor um está no extremo oposto, isto é, uma só pessoa detém toda a riqueza, a intuição nos diz que uma vez que em ambiente com grandes desigualdades a mortalidade infantil tende a ser maior
+
+Talvez outro ponto que  que possa ser mencionado  a sgnificância estatística de cada um. Destaca-se o nível de significancia de renda per capita de 5% e de salário médio de 10%. Os outros apresentam siginificancia abaixo de 1%
+
+
+##Questão 3: Qual o percentual da variabilidade da mortalidade infantil que é explicada pelas variáveis explicativas?
+
+O R- quadrado ajustado da regressão apresenta o valor de 0.6799, ou seja, cerca de 68% da variabilidade da mortalidade infantil é explicada pelas variáveis explicativas neste modelo
+
+##Questão 4: Utilizando o comando abaixo, crie a variável ‘perc_pop_rural’, indicando o percentual do município que vive em domicílios na zona rural. Adicione essa variável ao modelo de regressão. Com base no coeficiente estimado, “controlando-se” para as variáveis já presentes no modelo, qual o efeito da localização na zona rural sobre a taxa de mortalidade infantil?
+
+Esta varivável possui signifiância estatistica e está negativamente correlacionada com a mortalidade infantil o que a meu ver parece ser pouco intuitivo.
+
+
+##Questão 5: Com a inclusão da nova variável, o que aconteceu com o coeficiente de determinação e com o R2 ajustado?
+
+O R quadrado ajustado aumentou para 0.6936, ou seja, o percentual de variabilidade de mortalidade infantil que é explicada pelas variáveis explicativas aumentou para quase 70% mesmo com a penalização que a formulado Rquarado ajustado carrega.
+##Questão 6: Os dados utilizados para essa regressão são dados do tipo cross-section, do tipo séries de tempo ou do tipo dados de painel?
+
+Esses dados são do tipo cross-section, uma vez que são uma "fotografia" de um instante específico no tempo
+
+
+
+```{r}
+
+options(scipen = 10)
+mod1 <- lm(dados3$mort_infantil ~ dados3$renda_per_capita 
+                                     + dados3$indice_gini
+                                     + dados3$salario_medio_mensal
+                                     + dados3$perc_criancas_extrem_pobres
+                                     + dados3$perc_criancas_pobres
+                                     + dados3$perc_pessoas_dom_agua_estogo_inadequados
+                                     + dados3$perc_pessoas_dom_paredes_inadequadas
+                                     + dados3$perc_pop_dom_com_coleta_lixo)
+summary(mod1)
+
+
+# Inclusão de Nova variável
+
+
+dados3$perc_pop_rural <- dados3$populacao_rural / dados3$populacao_total
+
+
+mod1.1 <- mod1 <- lm(dados3$mort_infantil ~ dados3$renda_per_capita 
+                                     + dados3$indice_gini
+                                     + dados3$salario_medio_mensal
+                                     + dados3$perc_criancas_extrem_pobres
+                                     + dados3$perc_criancas_pobres
+                                     + dados3$perc_pessoas_dom_agua_estogo_inadequados
+                                     + dados3$perc_pessoas_dom_paredes_inadequadas
+                                     + dados3$perc_pop_dom_com_coleta_lixo
+                                     + dados3$perc_pop_rural)
+
+
+
+summary(mod1.1)
+```
+
+
+## Questões 07 - 10
+
+##Questão 7: Com base nos resultados dessa nova equação, qual o efeito das regiões Norte, Sul, Nordeste e Sudeste, mesmo depois de “controlarmos” para as variáveis incluídas no modelo?
+
+Os parâmetros encontrados nestas variáveis categóricas indicam a diferença esperada da mortalidade infantil em relação a região centro oeste. destaca-se a região nordeste como maior diferença com sinal positivo e a região sul, norte e sudeste como negativa.
+
+Estatisticamente,  estas variáveis categóricas  são incorporadas num modelo de regressão para dar conta de um deslocamento do intercepto como resultado de algum fator qualitativo, são chamadas de variáveis binárias de intercepto ou, simplesmente, variáveis dummy de intercepto.
+
+
+##Questão 8: Com base nos resultados dessa nova equação, como o efeito da renda per capita, sobre mortalidade infantil, se altera de acordo com a macrorregião do município?
+
+Esse tipo de modelagem são chamadas de variáveis de interação, pois são responsáveis por capturar o efeito de interação entre a a renda per capita e a macrorregião do município. Traduzindo, o impacto na variação dmortalidade de de regiões diferentes, dada a variação dda renda per capita dos indivíduos podem ser diferentes.
+
+
+##Questão 9: Houve uma melhora no R2 ajustado quando adicionamos os efeitos das macrorregiões sobre o coeficiente da renda per capita?
+
+O R quadrado aumentou, mesmo com o R quadrado ajustado, indicando uma melhor especificação do modelo
+
+
+##Questão 10: Vamos assumir que a variável “perc_pessoas_dom_agua_estogo_inadequados” seja uma variável direta de política pública. De acordo com os resultados da regressão acima, em qual região políticas de melhoria do acesso a água e esgoto seriam mais eficazes para reduzir a mortalidade infantil?
+
+
+
+```{r}
+
+# primeiro modelo Questão 7
+mod2.1 <- lm(dados3$mort_infantil ~ dados3$renda_per_capita 
+              + dados3$indice_gini
+              + dados3$salario_medio_mensal
+              + dados3$perc_criancas_extrem_pobres
+              + dados3$perc_criancas_pobres
+              + dados3$perc_pessoas_dom_agua_estogo_inadequados
+              + dados3$perc_pessoas_dom_paredes_inadequadas
+              + dados3$perc_pop_dom_com_coleta_lixo
+              + dados3$perc_pop_rural
+              + as.factor(dados3$Regiao))
+
+summary(mod2.1)
+
+# segunda regressão questão 8 e 9
+
+mod2.2 <- lm(dados3$mort_infantil ~ dados3$renda_per_capita 
+              + dados3$indice_gini
+              + dados3$salario_medio_mensal
+              + dados3$perc_criancas_extrem_pobres
+              + dados3$perc_criancas_pobres
+              + dados3$perc_pessoas_dom_agua_estogo_inadequados
+              + dados3$perc_pessoas_dom_paredes_inadequadas
+              + dados3$perc_pop_dom_com_coleta_lixo
+              + dados3$perc_pop_rural
+              + as.factor(dados3$Regiao)
+              + as.factor(dados3$Regiao)*dados3$renda_per_capita)
+summary(mod2.1)
+summary(mod2.2)
+
+# terceira regressão questão 10
+
+
+```
+
+
+
+
+
+```{r}
+mod2.3 <- lm(dados3$mort_infantil ~ dados3$renda_per_capita 
+              + dados3$indice_gini
+              + dados3$salario_medio_mensal
+              + dados3$perc_criancas_extrem_pobres
+              + dados3$perc_criancas_pobres
+              + dados3$perc_pessoas_dom_agua_estogo_inadequados
+              + dados3$perc_pessoas_dom_paredes_inadequadas
+              + dados3$perc_pop_dom_com_coleta_lixo
+              + dados3$perc_pop_rural
+              + as.factor(dados3$Regiao)
+              + as.factor(dados3$Regiao)*dados3$renda_per_capita
+              + as.factor(dados3$Regiao)*dados3$perc_pessoas_dom_agua_estogo_inadequados)
+
+summary(mod2.3)
+```
+
+
+
+
+
+
+

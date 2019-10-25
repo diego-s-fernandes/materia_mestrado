@@ -1,0 +1,111 @@
+---
+title: "Exemplo Criação de Relatórios"
+author: "Pedro Albuquerque"
+date: "Saturday, September 05, 2015"
+output: pdf_document
+---
+
+#Introdução.
+A implantação da Pnad teve início em 1967. Ao final da década de 60, a pesquisa básica abrangia a área compreendida pelas atuais regiões **Nordeste**, **Sudeste** e **Sul**, além do **Distrito Federal**. 
+
+Segundo o IBGE: *Até 1970, quando foi interrompido para a realização do Censo Demográfico, o levantamento era trimestral.*
+A partir de 1971, a pesquisa básica passou a ser realizada anualmente, sempre no último trimestre, tendo por referência a situação da população em 31 de setembro de cada ano. 
+
+```{r,echo=FALSE}
+#Definindo o working directory
+setwd("C:\\Users\\Alexandre\\Dropbox\\Novos_cursos\\IntroducaoComputacaoCientifica\\Dados\\PNAD 2013")
+```
+
+#Análise de dados.
+Nessa seção calcularemos a média da renda das famílias do Sudeste do Brasil usando, para isso, a **Pesquisa Nacional por Amostra de Domicílios 2013**.
+Note que a média é calculada como:
+$$
+\overline{x}=\sum_{i=1}^{n}\frac{x_{i}}{n}
+$$
+
+```{r,echo=FALSE, results='hide', warning=FALSE}
+#Definindo o working directory
+setwd("C:\\Users\\Alexandre\\Dropbox\\Novos_cursos\\IntroducaoComputacaoCientifica\\Dados\\PNAD 2013")
+#Lê a função
+source("LeBasesPosicaoFixa.R")
+#Seleciona somente Sudeste: 
+fselpr <- function(x) x[substring(x,5,5)==3]
+rcsel.pfix(file.inp="DOM2013.txt", file.out="DOM.txt",
+           first=c(5,18,157,162,174,178,185),
+           last=c(6,19,161,173,177,184,191),
+           fselpr)
+###Lê os dados do arquivo de interesse
+dados<-read.table("DOM.txt")
+###Deleta o arquivo DOM.txt
+file.remove("DOM.txt")
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+#Coloca os nomes das variáveis
+colnames(dados)<-c("UF","V0105","V4611","V4614","UPA","V4617","V4618")
+#Coloca os labels nas variáveis
+library(Hmisc)
+label(dados$UF)   <-'Unidade da federação'
+label(dados$V0105)<-'Número de moradores'
+label(dados$V4611)<-'Peso amostral'
+label(dados$V4614)<-'Rendimento domiciliar'
+label(dados$UPA)  <-'Delimitação do município'
+label(dados$V4617)<-'Strat'
+label(dados$V4618)<-'Unidade primária de amostragem'
+```
+
+Utilizando os dados da PNAD 2013, calculou-se a renda média das Unidades da Federação da região Sudoeste conforme tabela abaixo:
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+#Primeiro remove os 999999999999 da renda
+dados$V4614[which(dados$V4614>1e+10)]<-NA
+#Agora calcula a média por UF
+medias<-by(dados,list(dados$UF),function(x) 
+        weighted.mean(x$V4614,x$V4611, na.rm = TRUE))
+#Converte para data.frame
+tabela<-as.data.frame(do.call("rbind",as.list(medias)))
+#Coloca as UFs
+tabela$Nomes<-c("Minas Gerais","Espírito Santo",
+               "Rio de Janeiro","São Paulo")
+#Coloca os nomes
+colnames(tabela)<-c("Renda média","Unidade da Federação")
+#Cria a tabela
+library(pander)
+panderOptions("digits", 2)
+pander(tabela)
+```
+
+É possível fazer no R diversos gráficos entre eles:
+
+1. Gráfico de linha
+2. Gráfico de dispersão
+3. Gráfico de barras
+    + Horizontal
+    + Vertical
+
+Usamos para isso a biblioteca **ggplot2**:
+
+```{r,fig.width = 6, fig.height=6, message=FALSE,warning=FALSE}
+#Habilita a biblioteca
+library(ggplot2)
+#Cria o objeto gráfico
+p1 <- ggplot(dados, aes(x = V0105, y = V4611))
+p1 <- p1 + geom_point()
+p1
+```
+
+Podemos melhorar o gráfico, colocando cores e títulos:
+
+```{r,fig.width = 6, fig.height=6, message=FALSE,warning=FALSE}
+#Habilita a biblioteca
+library(ggplot2)
+#Cria o objeto gráfico
+p1 <- ggplot(dados, aes(x = V0105, y = V4611))
+p1 <- p1 + geom_point(color="red")
+p1 <- p1 + labs(x="Número de moradores", 
+                y = "Rendimento domiciliar",
+                title="Gráfico de dispersão")
+p1
+```
+
